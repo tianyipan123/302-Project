@@ -1,0 +1,182 @@
+---
+title: "Part 1"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+```
+## Data Preprocessing
+
+### Load Data
+```{r}
+df <- read.csv("BankChurners.csv")
+```
+
+### Retain Existing Customer
+Since we are only interested in the customers who has "healthy" relationship with the bank, 
+```{r}
+df <- df[df$Attrition_Flag == "Existing Customer", ]
+```
+
+### Remove Unknown values
+```{r}
+df <- df[df$Income_Category != "Unknown", ]
+df <- df[df$Education_Level != "Unknown", ]
+df <- df[df$Marital_Status != "Unknown", ]
+```
+
+### Retain Variables of Interest
+```{r}
+variables = c("Credit_Limit", "Income_Category", "Customer_Age", "Total_Trans_Ct", "Months_on_book", "Gender", "Education_Level", "Marital_Status")
+df <- df[variables]
+```
+
+
+```{r}
+df
+```
+### Generate Summary of All Variables
+
+```{r}
+summary(df)
+```
+### Generate Summary of Categorical Variables
+```{r}
+n = count(df)
+table(df$Education_Level) / dim(df)[1]
+```
+
+## Fit Linear Model
+
+```{r}
+mdl = lm(Credit_Limit ~ Income_Category + Customer_Age + Total_Trans_Ct + Months_on_book + Gender + Education_Level + Marital_Status, data=df)
+```
+
+```{r}
+summary(mdl)
+```
+
+## Checking Assumptions
+
+# Retrieve data of interest
+```{r}
+e_hat = resid(mdl)
+y_hat = fitted(mdl)
+y = df$Credit_Limit
+```
+
+
+### Plot 1: Residuals vs. Fitted
+```{r}
+plot(x = y_hat, y = e_hat, main = "Residuals vs. Fitted", ylab = "Residuals", xlab ="Fitted")
+```
+### Plot 2: Residuals vs. Predictors
+
+```{r}
+num_vars = c("Customer_Age", "Total_Trans_Ct", "Months_on_book")
+cat_vars = c("Income_Category", "Gender", "Education_Level", "Marital_Status")
+```
+
+#### Plot Numerical Variables
+```{r}
+par(mfrow=c(2, 2))
+for (var in num_vars) {
+  plot(e_hat ~ as.vector(unlist(df[var])), main = paste("Residuals vs. ", var), ylab = "Residuals", xlab =var)
+}
+```
+
+#### Plot Categorical Variables
+```{r}
+par(mfrow=c(2, 2))
+for (var in cat_vars) {
+  names = names(table(df[var]))
+  boxplot(e_hat ~ as.vector(unlist(df[var])), main = paste("Residuals vs. ", var), ylab = "Residuals", xlab =var, names=names)
+}
+```
+
+Note that in the box plot of residuals vs. Income_Category and Education_Level, some category label is missing due to limited space (which is automatic), so we will state it here for reference:
+
+- For Income_Category, the missing label is "Less than $40K",
+- For Education_Level, the missing labels are "High School" (on the left) and "Uneducated" (on the right).
+
+### Plot 3: QQ plot for Residuals
+```{r}
+qqnorm(e_hat)
+qqline(e_hat)
+```
+
+### Plot 4: Response vs. Fitted
+```{r}
+plot(x = y_hat, y = df$Credit_Limit, main = "Response vs. Fitted", ylab = "Response", xlab ="Fitted")
+abline(a = 0,b = 1, lty=2, col = "red")
+```
+
+### Plot 5: Pairwise Scatterplot of Predictors
+
+#### Relationship Between Numerical Variables
+```{r}
+pairs(df[num_vars])
+```
+
+#### Relationship between Numerical and Categorical Variables
+```{r}
+plot_boxplot <- function(df, num_var, cat_var) {
+  numeric_lists <- split(df[[num_var]], df[[cat_var]])
+  
+  # Create a side-by-side boxplot
+  boxplot(numeric_lists,
+          names = names(numeric_lists),
+          main = paste(cat_var, " vs. ", num_var),
+          xlab = cat_var,
+          ylab = num_var
+          )
+}
+```
+
+```{r}
+counter = 0
+par(mfrow = c(2, 3))
+for (cat_var in cat_vars){
+  
+  for (num_var in num_vars) {
+    plot_boxplot(df, num_var, cat_var)
+  }
+  counter = counter + 1
+  if (counter == 2){
+    par(mfrow = c(2, 3))
+  }
+}
+```
+Note that the missing x label in Income_Category and Education_Level are due to the same reason mentioned above.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
